@@ -744,10 +744,10 @@ class StandardROIHeads(ROIHeads):
             In inference, a list of `Instances`, the predicted instances.
         """
         features = [features[f] for f in self.box_in_features]
-        box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])
-        box_features = self.box_head(box_features)
-        predictions = self.box_predictor(box_features)
-        del box_features
+        box_features = self.box_pooler(features, [x.proposal_boxes for x in proposals])  # torch.Size([1000, 256, 7, 7])
+        box_features = self.box_head(box_features)  # torch.Size([1000, 1024])
+        predictions = self.box_predictor(box_features)  # tuple( torch.Size([1000, 81]), torch.Size([1000, 320]) )
+        # del box_features
 
         if self.training:
             assert not torch.jit.is_scripting()
@@ -762,7 +762,8 @@ class StandardROIHeads(ROIHeads):
                         proposals_per_image.proposal_boxes = Boxes(pred_boxes_per_image)
             return losses
         else:
-            pred_instances, _ = self.box_predictor.inference(predictions, proposals)
+            pred_instances, filter_inds = self.box_predictor.inference(predictions, proposals)
+            pred_instances[0].embeddings = box_features[filter_inds]
             return pred_instances
 
     def _forward_mask(self, features: Dict[str, torch.Tensor], instances: List[Instances]):

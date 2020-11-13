@@ -116,9 +116,13 @@ def fast_rcnn_inference_single_image(
     boxes.clip(image_shape)
     boxes = boxes.tensor.view(-1, num_bbox_reg_classes, 4)  # R x C x 4
 
+    # boxes_bkp = boxes.clone()
+    # scores_bkp = scores.clone()
+
     # 1. Filter results based on detection scores. It can make NMS more efficient
     #    by filtering out low-confidence detections.
     filter_mask = scores > score_thresh  # R x K
+    # filter_rows_mask_pre_nms = filter_mask.sum(dim=1).nonzero().flatten()
     # R' x 2. First column contains indices of the R predictions;
     # Second column contains indices of classes.
     filter_inds = filter_mask.nonzero()
@@ -138,6 +142,8 @@ def fast_rcnn_inference_single_image(
     result.pred_boxes = Boxes(boxes)
     result.scores = scores
     result.pred_classes = filter_inds[:, 1]
+    # final_filter = filter_rows_mask_pre_nms[keep]
+    # import bpdb; bpdb.set_trace()
     return result, filter_inds[:, 0]
 
 
@@ -499,6 +505,7 @@ class FastRCNNOutputLayers(nn.Module):
         boxes = self.predict_boxes(predictions, proposals)
         scores = self.predict_probs(predictions, proposals)
         image_shapes = [x.image_size for x in proposals]
+        # this one
         return fast_rcnn_inference(
             boxes,
             scores,
